@@ -34,7 +34,6 @@
       const target = tab.dataset.tab;
       $(`#tab-${target}`).classList.add("active");
 
-      // Fit terminal on tab switch
       requestAnimationFrame(() => {
         if (target === "actions" && actionTerm) actionTerm.fit?.();
         if (target === "terminal" && mainTerm) mainTerm.fit?.();
@@ -91,9 +90,14 @@
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(`${proto}//${location.host}/ws?id=${sessionId}`);
 
+    ws.onopen = () => {
+      // Enviar tamaño actual del terminal
+      const dims = { type: "resize", cols: term.cols, rows: term.rows };
+      ws.send(JSON.stringify(dims));
+    };
+
     ws.onmessage = (e) => {
       const data = e.data;
-      // Check for JSON control messages
       if (data.startsWith("{")) {
         try {
           const msg = JSON.parse(data);
@@ -104,6 +108,7 @@
           }
           if (msg.type === "error") {
             term.writeln(`\r\n\x1b[31mError: ${msg.message}\x1b[0m`);
+            if (onExit) onExit(1);
             return;
           }
         } catch (_) {
@@ -114,15 +119,18 @@
     };
 
     ws.onclose = () => {
-      term.writeln("\r\n\x1b[90m--- Conexion cerrada ---\x1b[0m");
+      // Solo mostrar si no fue un cierre limpio por exit
     };
 
-    // Forward terminal input to WebSocket
+    ws.onerror = () => {
+      term.writeln("\r\n\x1b[31mError de conexion WebSocket\x1b[0m");
+      if (onExit) onExit(1);
+    };
+
     term.onData((data) => {
       if (ws.readyState === WebSocket.OPEN) ws.send(data);
     });
 
-    // Forward resize events
     term.onResize(({ cols, rows }) => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "resize", cols, rows }));
@@ -130,6 +138,34 @@
     });
 
     return ws;
+  }
+
+  // --- Start session (shared by actions and terminal) ---
+  async function startSession(actionName, args, term, onExit) {
+    try {
+      const res = await fetch(`/api/action/${actionName}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ args: args || [] }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.id) {
+        term.writeln(`\x1b[31mError: ${data.error || "No se pudo crear la sesion"}\x1b[0m`);
+        if (onExit) onExit(1);
+        return null;
+      }
+
+      const ws = connectWs(data.id, term, onExit);
+      requestAnimationFrame(() => term.fit());
+
+      return { id: data.id, ws };
+    } catch (err) {
+      term.writeln(`\x1b[31mError: ${err.message}\x1b[0m`);
+      if (onExit) onExit(1);
+      return null;
+    }
   }
 
   // --- Status ---
@@ -154,7 +190,6 @@
         ? `${dot("green")}Lista`
         : `${dot("gray")}Pendiente`;
 
-      // Badge
       if (!s.platform.installed) {
         statusBadge.className = "badge badge-error";
         statusBadge.textContent = "No configurado";
@@ -169,9 +204,7 @@
         statusBadge.textContent = "Falta setup";
       }
 
-      // Button states
       btnLogin.disabled = !s.setup.baseReady || !!actionSession;
-      // Launch siempre habilitado: start.sh hace setup/login automaticamente si falta
       if (!terminalSession) btnLaunch.disabled = false;
     } catch (_) {
       statusBadge.className = "badge badge-error";
@@ -185,7 +218,6 @@
 
   // --- Actions ---
   async function runAction(name) {
-    // Init terminal if needed
     if (!actionTerm) {
       actionTerm = createTerminal($("#action-terminal"));
     } else {
@@ -196,26 +228,18 @@
     btnLogin.disabled = true;
     btnStopAction.style.display = "";
 
-    try {
-      const res = await fetch(`/api/action/${name}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const { id } = await res.json();
-      actionSession = id;
+    const result = await startSession(name, [], actionTerm, () => {
+      actionSession = null;
+      actionWs = null;
+      btnStopAction.style.display = "none";
+      btnSetup.disabled = false;
+      refreshStatus();
+    });
 
-      actionWs = connectWs(id, actionTerm, () => {
-        actionSession = null;
-        btnStopAction.style.display = "none";
-        btnSetup.disabled = false;
-        refreshStatus();
-      });
-
-      // Fit after connection
-      requestAnimationFrame(() => actionTerm.fit());
-    } catch (err) {
-      actionTerm.writeln(`\x1b[31mError: ${err.message}\x1b[0m`);
+    if (result) {
+      actionSession = result.id;
+      actionWs = result.ws;
+    } else {
       btnSetup.disabled = false;
       btnStopAction.style.display = "none";
     }
@@ -227,6 +251,7 @@
   btnStopAction.addEventListener("click", () => {
     if (actionWs) actionWs.close();
     actionSession = null;
+    actionWs = null;
     btnStopAction.style.display = "none";
     btnSetup.disabled = false;
     refreshStatus();
@@ -243,26 +268,20 @@
     btnLaunch.disabled = true;
     btnStopTerminal.style.display = "";
 
-    try {
-      const res = await fetch("/api/terminal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mountDir: mountDir.value || null }),
-      });
-      const { id } = await res.json();
-      terminalSession = id;
+    const args = mountDir.value ? [mountDir.value] : [];
+    const result = await startSession("start", args, mainTerm, () => {
+      terminalSession = null;
+      terminalWs = null;
+      btnLaunch.disabled = false;
+      btnStopTerminal.style.display = "none";
+      refreshStatus();
+    });
 
-      terminalWs = connectWs(id, mainTerm, () => {
-        terminalSession = null;
-        btnLaunch.disabled = false;
-        btnStopTerminal.style.display = "none";
-        refreshStatus();
-      });
-
-      requestAnimationFrame(() => mainTerm.fit());
+    if (result) {
+      terminalSession = result.id;
+      terminalWs = result.ws;
       mainTerm.focus();
-    } catch (err) {
-      mainTerm.writeln(`\x1b[31mError: ${err.message}\x1b[0m`);
+    } else {
       btnLaunch.disabled = false;
       btnStopTerminal.style.display = "none";
     }
@@ -271,6 +290,7 @@
   btnStopTerminal.addEventListener("click", () => {
     if (terminalWs) terminalWs.close();
     terminalSession = null;
+    terminalWs = null;
     btnLaunch.disabled = false;
     btnStopTerminal.style.display = "none";
     refreshStatus();

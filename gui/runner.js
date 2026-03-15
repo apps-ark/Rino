@@ -51,6 +51,7 @@ function runAction(name, args = []) {
   const scripts = {
     setup: "./setup.sh",
     login: "./login.sh",
+    start: "./start.sh",
   };
 
   const script = scripts[name];
