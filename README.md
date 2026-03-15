@@ -1,6 +1,10 @@
-# Claude Code Sandbox
+<p align="center">
+  <img src="logo_rino.png" alt="Rino VM AI" width="200" />
+</p>
 
-Entorno aislado para ejecutar Claude Code con `--dangerously-skip-permissions` sin riesgo para tu maquina, credenciales ni datos personales.
+<h1 align="center">Rino</h1>
+
+<p align="center">Entorno aislado para ejecutar Claude Code con <code>--dangerously-skip-permissions</code> sin riesgo para tu maquina, credenciales ni datos personales.</p>
 
 ## Requisitos
 
