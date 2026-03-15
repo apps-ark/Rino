@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # start.sh — Levanta el sandbox de Claude Code
+# Si no hay setup o login, los ejecuta automaticamente
 # Uso: ./start.sh [directorio-a-montar]
 set -euo pipefail
 
@@ -20,22 +21,86 @@ error() { echo -e "${RED}>>>${NC} $*"; exit 1; }
 # ------------------------------------------------------------------
 # macOS: Shuru
 # ------------------------------------------------------------------
-start_macos() {
+ensure_shuru() {
   if ! command -v shuru &>/dev/null; then
-    error "Shuru no esta instalado. Ejecuta: ./setup.sh"
+    info "Shuru no esta instalado. Instalando..."
+    if [[ "$(uname -m)" != "arm64" ]]; then
+      error "Shuru requiere Apple Silicon (M1/M2/M3/M4)."
+    fi
+    if command -v brew &>/dev/null; then
+      brew tap superhq-ai/tap && brew install shuru
+    else
+      curl -fsSL https://shuru.run/install.sh | sh
+    fi
+  fi
+}
+
+ensure_checkpoint_base() {
+  if shuru checkpoint list 2>/dev/null | grep -q "claude-ready"; then
+    return 0
   fi
 
-  # Elegir checkpoint
-  CHECKPOINT="claude-authed"
-  if ! shuru checkpoint list 2>/dev/null | grep -q "$CHECKPOINT"; then
-    CHECKPOINT="claude-ready"
-    if ! shuru checkpoint list 2>/dev/null | grep -q "$CHECKPOINT"; then
-      error "No hay checkpoints. Ejecuta: ./setup.sh"
-    fi
-    warn "No se encontro 'claude-authed'. Usando 'claude-ready'."
-    warn "Necesitaras hacer 'claude login' manualmente."
-    warn "Para persistir el login: ./login.sh"
+  info "Primera ejecucion: creando entorno base..."
+  info "Esto puede tardar unos minutos..."
+  echo ""
+
+  shuru checkpoint create claude-ready \
+    --allow-net \
+    --cpus 8 \
+    --memory 8192 \
+    --disk-size 4096 \
+    -- sh -c '
+    set -eu
+    apk update
+    apk add --no-cache \
+      ca-certificates curl wget git bash openssh \
+      nodejs npm \
+      python3 py3-pip \
+      build-base linux-headers
+
+    npm install -g @anthropic-ai/claude-code
+
+    sed -i "s|/bin/ash|/bin/bash|" /etc/passwd
+    mkdir -p ~/workspace
+
+    echo ""
+    echo ">>> Node.js $(node --version)"
+    echo ">>> npm $(npm --version)"
+    echo ">>> Claude Code $(claude --version)"
+  '
+
+  info "Entorno base creado."
+}
+
+ensure_checkpoint_auth() {
+  if shuru checkpoint list 2>/dev/null | grep -q "claude-authed"; then
+    return 0
   fi
+
+  echo ""
+  info "Necesitas autenticarte con Claude (solo la primera vez)."
+  echo ""
+  echo -e "${BOLD}  Dentro de la VM ejecuta:${NC}"
+  echo "    claude login"
+  echo ""
+  echo -e "${BOLD}  Cuando termines, escribe:${NC}"
+  echo "    exit"
+  echo ""
+
+  shuru checkpoint create claude-authed \
+    --from claude-ready \
+    --allow-net \
+    --cpus 8 \
+    --memory 8192 \
+    -- bash -l
+
+  info "Autenticacion guardada."
+}
+
+start_macos() {
+  ensure_shuru
+  ensure_checkpoint_base
+  ensure_checkpoint_auth
 
   MOUNT_FLAG=""
   if [ -n "$MOUNT_DIR" ]; then
@@ -44,12 +109,12 @@ start_macos() {
     info "Montando: $MOUNT_DIR -> /workspace"
   fi
 
-  info "Levantando VM desde checkpoint '$CHECKPOINT'..."
+  info "Levantando VM..."
 
   cd "$SCRIPT_DIR"
 
   # shellcheck disable=SC2086
-  shuru run --allow-net --from "$CHECKPOINT" \
+  shuru run --allow-net --from "claude-authed" \
     --cpus 8 \
     --memory 8192 \
     $MOUNT_FLAG \
@@ -71,14 +136,59 @@ start_macos() {
 # ------------------------------------------------------------------
 # Linux: Docker
 # ------------------------------------------------------------------
-start_linux() {
+ensure_docker() {
   if ! command -v docker &>/dev/null; then
-    error "Docker no esta instalado. Ejecuta: ./setup.sh"
+    error "Docker no esta instalado. Instalalo desde https://docs.docker.com/engine/install/"
+  fi
+  if ! docker info &>/dev/null; then
+    error "Docker no esta corriendo. Prueba: sudo systemctl start docker"
+  fi
+}
+
+ensure_image() {
+  if docker image inspect claude-sandbox &>/dev/null 2>&1; then
+    return 0
   fi
 
-  if ! docker image inspect claude-sandbox &>/dev/null 2>&1; then
-    error "Imagen 'claude-sandbox' no encontrada. Ejecuta: ./setup.sh"
+  info "Primera ejecucion: construyendo imagen..."
+  docker build -t claude-sandbox "$SCRIPT_DIR"
+  info "Imagen creada."
+}
+
+ensure_auth_volume() {
+  docker volume create claude-sandbox-auth &>/dev/null || true
+
+  # Verificar si ya hay auth guardada (archivo .claude.json con oauthAccount)
+  AUTH_CHECK=$(docker run --rm -v claude-sandbox-auth:/root/.claude claude-sandbox \
+    sh -c 'test -f /root/.claude.json && echo "HAS_AUTH" || echo "NO_AUTH"' 2>/dev/null || echo "NO_AUTH")
+
+  if [ "$AUTH_CHECK" = "HAS_AUTH" ]; then
+    return 0
   fi
+
+  echo ""
+  info "Necesitas autenticarte con Claude (solo la primera vez)."
+  echo ""
+  echo -e "${BOLD}  Dentro del contenedor ejecuta:${NC}"
+  echo "    claude login"
+  echo ""
+  echo -e "${BOLD}  Cuando termines, escribe:${NC}"
+  echo "    exit"
+  echo ""
+
+  docker run -it --rm \
+    --name claude-sandbox-login \
+    -v claude-sandbox-auth:/root/.claude \
+    claude-sandbox \
+    bash -l
+
+  info "Autenticacion guardada."
+}
+
+start_linux() {
+  ensure_docker
+  ensure_image
+  ensure_auth_volume
 
   MOUNT_FLAG=""
   if [ -n "$MOUNT_DIR" ]; then

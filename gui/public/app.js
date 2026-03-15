@@ -171,7 +171,8 @@
 
       // Button states
       btnLogin.disabled = !s.setup.baseReady || !!actionSession;
-      btnLaunch.disabled = !s.setup.baseReady;
+      // Launch siempre habilitado: start.sh hace setup/login automaticamente si falta
+      if (!terminalSession) btnLaunch.disabled = false;
     } catch (_) {
       statusBadge.className = "badge badge-error";
       statusBadge.textContent = "Error";
