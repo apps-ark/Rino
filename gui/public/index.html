@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claude Code Sandbox</title>
+    <link rel="stylesheet" href="/xterm/xterm.css" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-left">
+          <h1>Claude Code Sandbox</h1>
+        </div>
+        <div class="header-right">
+          <span id="status-badge" class="badge badge-unknown">Cargando...</span>
+        </div>
+      </header>
+
+      <!-- Status Panel -->
+      <div class="status-panel" id="status-panel">
+        <div class="status-grid">
+          <div class="status-item">
+            <span class="status-label">Sistema</span>
+            <span class="status-value" id="st-os">--</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Motor</span>
+            <span class="status-value" id="st-tool">--</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Base</span>
+            <span class="status-value" id="st-base">--</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Auth</span>
+            <span class="status-value" id="st-auth">--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" data-tab="actions">Configuracion</button>
+        <button class="tab" data-tab="terminal">Terminal</button>
+      </div>
+
+      <!-- Actions Tab -->
+      <div class="tab-content active" id="tab-actions">
+        <div class="actions-bar">
+          <button class="btn btn-primary" id="btn-setup">
+            <span class="btn-icon">1</span>
+            Setup inicial
+          </button>
+          <button class="btn btn-secondary" id="btn-login">
+            <span class="btn-icon">2</span>
+            Login OAuth
+          </button>
+          <button class="btn btn-danger" id="btn-stop-action" style="display: none">
+            Detener
+          </button>
+        </div>
+        <div class="terminal-container" id="action-terminal"></div>
+      </div>
+
+      <!-- Terminal Tab -->
+      <div class="tab-content" id="tab-terminal">
+        <div class="terminal-toolbar">
+          <label class="mount-label" for="mount-dir">
+            Montar directorio:
+          </label>
+          <input
+            type="text"
+            id="mount-dir"
+            class="mount-input"
+            placeholder="/ruta/a/tu/proyecto (opcional)"
+          />
+          <button class="btn btn-primary" id="btn-launch">
+            Iniciar sandbox
+          </button>
+          <button class="btn btn-danger" id="btn-stop-terminal" style="display: none">
+            Detener
+          </button>
+        </div>
+        <div class="terminal-container" id="main-terminal"></div>
+      </div>
+    </div>
+
+    <script src="/xterm/xterm.js"></script>
+    <script src="/xterm/xterm-addon-fit.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

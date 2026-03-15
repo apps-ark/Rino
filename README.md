@@ -9,8 +9,25 @@ Entorno aislado para ejecutar Claude Code con `--dangerously-skip-permissions` s
 | **Motor** | [Shuru](https://shuru.run) (microVM nativa) | [Docker](https://docs.docker.com/engine/install/) |
 | **Arch** | Apple Silicon (M1+) | x86_64 / ARM64 |
 | **OS** | macOS 14+ (Sonoma) | Cualquier distro con Docker |
+| **Extra** | Node.js >= 18 (para la GUI) | Node.js >= 18 (para la GUI) |
 
-## Setup (un solo comando)
+## Setup rapido
+
+### Opcion A: Con interfaz grafica (recomendada)
+
+```bash
+git clone <url-del-repo> claude-sandbox
+cd claude-sandbox
+./gui.sh
+```
+
+Abre una interfaz web en tu navegador donde puedes:
+- Ver el estado del sistema
+- Ejecutar el setup con un click
+- Hacer login OAuth
+- Usar una terminal embebida para trabajar dentro del sandbox
+
+### Opcion B: Solo CLI
 
 ```bash
 git clone <url-del-repo> claude-sandbox
@@ -23,6 +40,16 @@ El script detecta tu OS y:
 - **Linux**: Construye una imagen Docker con todo instalado, crea un volumen persistente para auth, y abre un contenedor para que hagas `claude login`
 
 ## Uso diario
+
+### Con GUI
+
+```bash
+./gui.sh
+```
+
+En la pestana **Terminal**: escribe la ruta de tu proyecto, haz click en "Iniciar sandbox", y usa `claude --dangerously-skip-permissions` directamente desde el navegador.
+
+### Con CLI
 
 ```bash
 # Sin proyecto — abre un sandbox limpio
@@ -37,7 +64,7 @@ claude --dangerously-skip-permissions
 
 ## Que incluye el sandbox
 
-- Node.js 22 + npm
+- Node.js + npm
 - Python 3 + pip
 - Git, curl, wget, bash
 - Claude Code (ultima version)
@@ -90,10 +117,33 @@ shuru checkpoint delete claude-authed
 
 | Comando | Que hace |
 |---|---|
-| `./setup.sh` | Setup inicial (una sola vez) |
-| `./start.sh` | Levanta el sandbox |
+| `./gui.sh` | Abre la interfaz grafica |
+| `./setup.sh` | Setup inicial via CLI (una sola vez) |
+| `./start.sh` | Levanta el sandbox via CLI |
 | `./start.sh ~/proyecto` | Levanta con proyecto montado |
 | `./login.sh` | Renueva la autenticacion OAuth |
+
+## Estructura del proyecto
+
+```
+claude-sandbox/
+├── gui.sh              # Lanza la GUI
+├── setup.sh            # Setup CLI (macOS/Linux)
+├── start.sh            # Inicia sandbox CLI
+├── login.sh            # Renueva auth OAuth
+├── shuru.json          # Config de red y VM (macOS)
+├── Dockerfile          # Imagen del sandbox (Linux)
+├── gui/
+│   ├── server.js       # Servidor web + WebSocket
+│   ├── status.js       # Deteccion de estado del sistema
+│   ├── runner.js       # Gestiona sesiones de terminal (node-pty)
+│   ├── package.json
+│   └── public/
+│       ├── index.html  # UI principal
+│       ├── style.css   # Estilos (tema oscuro)
+│       └── app.js      # Logica del cliente + xterm.js
+└── README.md
+```
 
 ## Mantenimiento
 
@@ -101,7 +151,7 @@ shuru checkpoint delete claude-authed
 
 ```bash
 ./login.sh
-# Dentro: claude login → exit
+# Dentro: claude login -> exit
 ```
 
 ### Actualizar Claude Code
