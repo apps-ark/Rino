@@ -9,9 +9,13 @@ RUN apk update && apk add --no-cache \
 
 RUN npm install -g @anthropic-ai/claude-code
 
-RUN sed -i 's|/bin/ash|/bin/bash|' /etc/passwd \
-    && mkdir -p /root/workspace
+# Crear usuario no-root (--dangerously-skip-permissions no permite root)
+RUN adduser -D -s /bin/bash -h /home/coder coder \
+    && echo "coder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers \
+    && mkdir -p /home/coder/workspace \
+    && chown -R coder:coder /home/coder
 
-WORKDIR /root/workspace
+USER coder
+WORKDIR /home/coder/workspace
 
 CMD ["bash", "-l"]

@@ -215,6 +215,18 @@ body {
   background: var(--border);
 }
 
+.btn-claude {
+  background: var(--accent-dim);
+  color: white;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.btn-claude:hover:not(:disabled) {
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent-dim);
+}
+
 .btn-danger {
   background: #3d0000;
   color: var(--red);

@@ -60,15 +60,22 @@ setup_macos() {
       set -eu
       apk update
       apk add --no-cache \
-        ca-certificates curl wget git bash openssh \
+        ca-certificates curl wget git bash openssh sudo \
         nodejs npm \
         python3 py3-pip \
         build-base linux-headers
 
       npm install -g @anthropic-ai/claude-code
 
-      sed -i "s|/bin/ash|/bin/bash|" /etc/passwd
-      mkdir -p ~/workspace
+      addgroup coder
+      adduser -D -G coder -s /bin/bash coder
+      echo "coder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+      mkdir -p /home/coder/workspace
+      chown -R coder:coder /home/coder
+
+      echo "export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" >> /home/coder/.bashrc
+      echo "export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" >> /home/coder/.profile
+      chown coder:coder /home/coder/.bashrc /home/coder/.profile
 
       echo ""
       echo ">>> Node.js $(node --version)"
@@ -93,7 +100,7 @@ setup_macos() {
     --allow-net \
     --cpus 8 \
     --memory 8192 \
-    -- bash -l
+    -- su - coder -c "bash -l"
 
   echo ""
   info "Setup completo!"
@@ -133,7 +140,8 @@ setup_linux() {
   docker volume create claude-sandbox-auth &>/dev/null || true
   docker run -it --rm \
     --name claude-sandbox-login \
-    -v claude-sandbox-auth:/root/.claude \
+    -u coder \
+    -v claude-sandbox-auth:/home/coder/.claude \
     claude-sandbox \
     bash -l
 

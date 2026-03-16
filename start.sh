@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # start.sh — Levanta el sandbox de Claude Code
 # Si no hay setup o login, los ejecuta automaticamente
-# Uso: ./start.sh [directorio-a-montar]
+# Uso: ./start.sh [directorio-a-montar] [--claude]
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-MOUNT_DIR="${1:-}"
 OS="$(uname -s)"
 
 GREEN='\033[0;32m'
@@ -17,6 +16,42 @@ NC='\033[0m'
 info()  { echo -e "${GREEN}>>>${NC} $*"; }
 warn()  { echo -e "${YELLOW}>>>${NC} $*"; }
 error() { echo -e "${RED}>>>${NC} $*"; exit 1; }
+
+# Parse args
+MOUNT_DIR=""
+AUTO_CLAUDE=false
+for arg in "$@"; do
+  case "$arg" in
+    --claude) AUTO_CLAUDE=true ;;
+    *) MOUNT_DIR="$arg" ;;
+  esac
+done
+
+# Comando que se ejecuta dentro del sandbox
+INNER_CMD='
+  cd /workspace 2>/dev/null || cd ~/workspace
+  echo ""
+  echo "=== Claude Code Sandbox ==="
+  echo "Dir:    $(pwd)"
+  echo "Claude: $(claude --version 2>/dev/null || echo "no encontrado")"
+  echo "Node:   $(node --version 2>/dev/null)"
+  echo ""
+  echo "  claude --dangerously-skip-permissions    # modo autonomo"
+  echo "  claude                                   # modo interactivo"
+  echo ""
+  exec bash -l
+'
+
+if [ "$AUTO_CLAUDE" = true ]; then
+  INNER_CMD='
+    cd /workspace 2>/dev/null || cd ~/workspace
+    echo ""
+    echo "=== Claude Code Sandbox ==="
+    echo "Dir: $(pwd)"
+    echo ""
+    exec claude --dangerously-skip-permissions
+  '
+fi
 
 # ------------------------------------------------------------------
 # macOS: Shuru
@@ -53,15 +88,19 @@ ensure_checkpoint_base() {
     set -eu
     apk update
     apk add --no-cache \
-      ca-certificates curl wget git bash openssh \
+      ca-certificates curl wget git bash openssh sudo \
       nodejs npm \
       python3 py3-pip \
       build-base linux-headers
 
     npm install -g @anthropic-ai/claude-code
 
-    sed -i "s|/bin/ash|/bin/bash|" /etc/passwd
-    mkdir -p ~/workspace
+    # Crear usuario no-root para Claude
+    adduser -D -s /bin/bash -h /home/coder coder
+    echo "coder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+    mkdir -p /home/coder/workspace
+    chown -R coder:coder /home/coder
 
     echo ""
     echo ">>> Node.js $(node --version)"
@@ -92,7 +131,7 @@ ensure_checkpoint_auth() {
     --allow-net \
     --cpus 8 \
     --memory 8192 \
-    -- bash -l
+    -- su - coder -c "bash -l"
 
   info "Autenticacion guardada."
 }
@@ -118,19 +157,7 @@ start_macos() {
     --cpus 8 \
     --memory 8192 \
     $MOUNT_FLAG \
-    -- bash -c '
-    cd /workspace 2>/dev/null || cd ~/workspace
-    echo ""
-    echo "=== Claude Code Sandbox (Shuru VM) ==="
-    echo "Dir:    $(pwd)"
-    echo "Claude: $(claude --version 2>/dev/null || echo "no encontrado")"
-    echo "Node:   $(node --version 2>/dev/null)"
-    echo ""
-    echo "  claude --dangerously-skip-permissions    # modo autonomo"
-    echo "  claude                                   # modo interactivo"
-    echo ""
-    exec bash -l
-  '
+    -- su - coder -c "$INNER_CMD"
 }
 
 # ------------------------------------------------------------------
@@ -158,9 +185,8 @@ ensure_image() {
 ensure_auth_volume() {
   docker volume create claude-sandbox-auth &>/dev/null || true
 
-  # Verificar si ya hay auth guardada (archivo .claude.json con oauthAccount)
-  AUTH_CHECK=$(docker run --rm -v claude-sandbox-auth:/root/.claude claude-sandbox \
-    sh -c 'test -f /root/.claude.json && echo "HAS_AUTH" || echo "NO_AUTH"' 2>/dev/null || echo "NO_AUTH")
+  AUTH_CHECK=$(docker run --rm -v claude-sandbox-auth:/home/coder/.claude claude-sandbox \
+    sh -c 'test -f /home/coder/.claude.json && echo "HAS_AUTH" || echo "NO_AUTH"' 2>/dev/null || echo "NO_AUTH")
 
   if [ "$AUTH_CHECK" = "HAS_AUTH" ]; then
     return 0
@@ -178,7 +204,8 @@ ensure_auth_volume() {
 
   docker run -it --rm \
     --name claude-sandbox-login \
-    -v claude-sandbox-auth:/root/.claude \
+    -u coder \
+    -v claude-sandbox-auth:/home/coder/.claude \
     claude-sandbox \
     bash -l
 
@@ -202,22 +229,11 @@ start_linux() {
   # shellcheck disable=SC2086
   docker run -it --rm \
     --name claude-sandbox \
-    -v claude-sandbox-auth:/root/.claude \
+    -u coder \
+    -v claude-sandbox-auth:/home/coder/.claude \
     $MOUNT_FLAG \
     claude-sandbox \
-    bash -c '
-    cd /workspace 2>/dev/null || cd ~/workspace
-    echo ""
-    echo "=== Claude Code Sandbox (Docker) ==="
-    echo "Dir:    $(pwd)"
-    echo "Claude: $(claude --version 2>/dev/null || echo "no encontrado")"
-    echo "Node:   $(node --version 2>/dev/null)"
-    echo ""
-    echo "  claude --dangerously-skip-permissions    # modo autonomo"
-    echo "  claude                                   # modo interactivo"
-    echo ""
-    exec bash -l
-  '
+    bash -c "$INNER_CMD"
 }
 
 # ------------------------------------------------------------------

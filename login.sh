@@ -37,7 +37,7 @@ case "$OS" in
       --allow-net \
       --cpus 8 \
       --memory 8192 \
-      -- bash -l
+      -- su - coder -c "bash -l"
 
     info "Checkpoint 'claude-authed' actualizado."
     ;;
@@ -46,7 +46,8 @@ case "$OS" in
     docker volume create claude-sandbox-auth &>/dev/null || true
     docker run -it --rm \
       --name claude-sandbox-login \
-      -v claude-sandbox-auth:/root/.claude \
+      -u coder \
+      -v claude-sandbox-auth:/home/coder/.claude \
       claude-sandbox \
       bash -l
 

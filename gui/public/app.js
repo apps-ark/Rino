@@ -22,6 +22,7 @@
   const btnLogin = $("#btn-login");
   const btnStopAction = $("#btn-stop-action");
   const btnLaunch = $("#btn-launch");
+  const btnClaude = $("#btn-claude");
   const btnStopTerminal = $("#btn-stop-terminal");
   const mountDir = $("#mount-dir");
 
@@ -258,7 +259,7 @@
   });
 
   // --- Terminal ---
-  btnLaunch.addEventListener("click", async () => {
+  async function launchTerminal(action) {
     if (!mainTerm) {
       mainTerm = createTerminal($("#main-terminal"));
     } else {
@@ -266,13 +267,15 @@
     }
 
     btnLaunch.disabled = true;
+    btnClaude.disabled = true;
     btnStopTerminal.style.display = "";
 
     const args = mountDir.value ? [mountDir.value] : [];
-    const result = await startSession("start", args, mainTerm, () => {
+    const result = await startSession(action, args, mainTerm, () => {
       terminalSession = null;
       terminalWs = null;
       btnLaunch.disabled = false;
+      btnClaude.disabled = false;
       btnStopTerminal.style.display = "none";
       refreshStatus();
     });
@@ -283,15 +286,20 @@
       mainTerm.focus();
     } else {
       btnLaunch.disabled = false;
+      btnClaude.disabled = false;
       btnStopTerminal.style.display = "none";
     }
-  });
+  }
+
+  btnLaunch.addEventListener("click", () => launchTerminal("start"));
+  btnClaude.addEventListener("click", () => launchTerminal("claude"));
 
   btnStopTerminal.addEventListener("click", () => {
     if (terminalWs) terminalWs.close();
     terminalSession = null;
     terminalWs = null;
     btnLaunch.disabled = false;
+    btnClaude.disabled = false;
     btnStopTerminal.style.display = "none";
     refreshStatus();
   });
