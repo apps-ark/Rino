@@ -81,8 +81,13 @@ do_setup_macos() {
     mkdir -p /home/coder/workspace
     chown -R coder:coder /home/coder
 
-    echo "export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" >> /home/coder/.bashrc
-    echo "export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" >> /home/coder/.profile
+    cat >> /home/coder/.bashrc << "BASHRC"
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+export TERM=xterm-256color
+BASHRC
+    cp /home/coder/.bashrc /home/coder/.profile
     chown coder:coder /home/coder/.bashrc /home/coder/.profile
 
     echo ""
@@ -116,6 +121,9 @@ do_login_macos() {
     --memory 8192 \
     -- su - coder -c '
     export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+    export TERM=xterm-256color
     echo ""
     echo "========================================="
     echo "  Login de Claude Code"
@@ -157,27 +165,33 @@ start_macos() {
     info "Montando: $MOUNT_DIR -> /workspace"
   fi
 
-  INNER_CMD='
+  # Preambulo que se ejecuta dentro de la VM como coder
+  VM_INIT='
     export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-    [ -n "$COLUMNS" ] && stty cols "$COLUMNS" rows "$LINES" 2>/dev/null
-    cd /workspace 2>/dev/null || cd ~/workspace
-    echo ""
-    echo "=== Rino - Claude Code Sandbox ==="
-    echo "Dir:    $(pwd)"
-    echo "Claude: $(claude --version 2>/dev/null)"
-    echo ""
-    echo "  claude --dangerously-skip-permissions"
-    echo ""
-    exec bash -l
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+    export TERM=xterm-256color
+    # Leer tamaño real del PTY de Shuru (no de env vars del host)
+    eval $(stty size 2>/dev/null | awk "{printf \"stty rows %s cols %s\", \$1, \$2}") 2>/dev/null
   '
 
+  INNER_CMD="${VM_INIT}
+    cd /workspace 2>/dev/null || cd ~/workspace
+    echo \"\"
+    echo \"=== Rino - Claude Code Sandbox ===\"
+    echo \"Dir:    \$(pwd)\"
+    echo \"Claude: \$(claude --version 2>/dev/null)\"
+    echo \"\"
+    echo \"  claude --dangerously-skip-permissions\"
+    echo \"\"
+    exec bash -l
+  "
+
   if [ "$AUTO_CLAUDE" = true ]; then
-    INNER_CMD='
-      export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-      [ -n "$COLUMNS" ] && stty cols "$COLUMNS" rows "$LINES" 2>/dev/null
+    INNER_CMD="${VM_INIT}
       cd /workspace 2>/dev/null || cd ~/workspace
       exec claude --dangerously-skip-permissions
-    '
+    "
   fi
 
   info "Levantando VM..."
@@ -237,6 +251,9 @@ do_login_linux() {
     claude-sandbox \
     bash -c '
     export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+    export TERM=xterm-256color
     echo ""
     echo "========================================="
     echo "  Login de Claude Code"
@@ -275,27 +292,33 @@ start_linux() {
     info "Montando: $MOUNT_DIR -> /workspace"
   fi
 
-  INNER_CMD='
+  # Preambulo que se ejecuta dentro de la VM como coder
+  VM_INIT='
     export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-    [ -n "$COLUMNS" ] && stty cols "$COLUMNS" rows "$LINES" 2>/dev/null
-    cd /workspace 2>/dev/null || cd ~/workspace
-    echo ""
-    echo "=== Rino - Claude Code Sandbox ==="
-    echo "Dir:    $(pwd)"
-    echo "Claude: $(claude --version 2>/dev/null)"
-    echo ""
-    echo "  claude --dangerously-skip-permissions"
-    echo ""
-    exec bash -l
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+    export TERM=xterm-256color
+    # Leer tamaño real del PTY de Shuru (no de env vars del host)
+    eval $(stty size 2>/dev/null | awk "{printf \"stty rows %s cols %s\", \$1, \$2}") 2>/dev/null
   '
 
+  INNER_CMD="${VM_INIT}
+    cd /workspace 2>/dev/null || cd ~/workspace
+    echo \"\"
+    echo \"=== Rino - Claude Code Sandbox ===\"
+    echo \"Dir:    \$(pwd)\"
+    echo \"Claude: \$(claude --version 2>/dev/null)\"
+    echo \"\"
+    echo \"  claude --dangerously-skip-permissions\"
+    echo \"\"
+    exec bash -l
+  "
+
   if [ "$AUTO_CLAUDE" = true ]; then
-    INNER_CMD='
-      export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-      [ -n "$COLUMNS" ] && stty cols "$COLUMNS" rows "$LINES" 2>/dev/null
+    INNER_CMD="${VM_INIT}
       cd /workspace 2>/dev/null || cd ~/workspace
       exec claude --dangerously-skip-permissions
-    '
+    "
   fi
 
   info "Levantando contenedor..."
