@@ -115,6 +115,7 @@ do_login_macos() {
     --cpus 8 \
     --memory 8192 \
     -- su - coder -c '
+    export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
     echo ""
     echo "========================================="
     echo "  Login de Claude Code"
@@ -157,6 +158,7 @@ start_macos() {
   fi
 
   INNER_CMD='
+    export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
     cd /workspace 2>/dev/null || cd ~/workspace
     echo ""
     echo "=== Rino - Claude Code Sandbox ==="
@@ -170,6 +172,7 @@ start_macos() {
 
   if [ "$AUTO_CLAUDE" = true ]; then
     INNER_CMD='
+      export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
       cd /workspace 2>/dev/null || cd ~/workspace
       exec claude --dangerously-skip-permissions
     '
@@ -231,6 +234,7 @@ do_login_linux() {
     -v claude-sandbox-auth:/home/coder/.claude \
     claude-sandbox \
     bash -c '
+    export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
     echo ""
     echo "========================================="
     echo "  Login de Claude Code"
@@ -270,6 +274,7 @@ start_linux() {
   fi
 
   INNER_CMD='
+    export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
     cd /workspace 2>/dev/null || cd ~/workspace
     echo ""
     echo "=== Rino - Claude Code Sandbox ==="
@@ -283,6 +288,7 @@ start_linux() {
 
   if [ "$AUTO_CLAUDE" = true ]; then
     INNER_CMD='
+      export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
       cd /workspace 2>/dev/null || cd ~/workspace
       exec claude --dangerously-skip-permissions
     '
