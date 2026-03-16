@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Claude Code Sandbox</title>
+    <title>Rino - Claude Code Sandbox</title>
     <link rel="stylesheet" href="/xterm/xterm.css" />
     <link rel="stylesheet" href="/style.css" />
   </head>
@@ -12,7 +12,8 @@
       <!-- Header -->
       <header class="header">
         <div class="header-left">
-          <h1>Claude Code Sandbox</h1>
+          <h1>Rino</h1>
+          <span class="header-subtitle">Claude Code Sandbox</span>
         </div>
         <div class="header-right">
           <span id="status-badge" class="badge badge-unknown">Cargando...</span>
@@ -31,46 +32,27 @@
             <span class="status-value" id="st-tool">--</span>
           </div>
           <div class="status-item">
-            <span class="status-label">Base</span>
+            <span class="status-label">Entorno</span>
             <span class="status-value" id="st-base">--</span>
           </div>
           <div class="status-item">
-            <span class="status-label">Auth</span>
+            <span class="status-label">Sesion</span>
             <span class="status-value" id="st-auth">--</span>
           </div>
         </div>
       </div>
 
-      <!-- Tabs -->
-      <div class="tabs">
-        <button class="tab active" data-tab="actions">Configuracion</button>
-        <button class="tab" data-tab="terminal">Terminal</button>
-      </div>
-
-      <!-- Actions Tab -->
-      <div class="tab-content active" id="tab-actions">
-        <div class="actions-bar">
-          <button class="btn btn-primary" id="btn-setup">
-            <span class="btn-icon">1</span>
-            Setup inicial
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button class="btn btn-secondary" id="btn-setup">
+            Instalar entorno
           </button>
           <button class="btn btn-secondary" id="btn-login">
-            <span class="btn-icon">2</span>
-            Login OAuth
+            Iniciar sesion
           </button>
-          <button class="btn btn-danger" id="btn-stop-action" style="display: none">
-            Detener
-          </button>
-        </div>
-        <div class="terminal-container" id="action-terminal"></div>
-      </div>
-
-      <!-- Terminal Tab -->
-      <div class="tab-content" id="tab-terminal">
-        <div class="terminal-toolbar">
-          <label class="mount-label" for="mount-dir">
-            Montar directorio:
-          </label>
+          <div class="toolbar-separator"></div>
+          <label class="mount-label" for="mount-dir">Proyecto:</label>
           <input
             type="text"
             id="mount-dir"
@@ -78,17 +60,21 @@
             placeholder="/ruta/a/tu/proyecto (opcional)"
           />
           <button class="btn btn-secondary" id="btn-launch">
-            Iniciar sandbox
+            Terminal
           </button>
           <button class="btn btn-claude" id="btn-claude">
             Claude Code
           </button>
-          <button class="btn btn-danger" id="btn-stop-terminal" style="display: none">
+        </div>
+        <div class="toolbar-right">
+          <button class="btn btn-danger" id="btn-stop" style="display: none">
             Detener
           </button>
         </div>
-        <div class="terminal-container" id="main-terminal"></div>
       </div>
+
+      <!-- Terminal -->
+      <div class="terminal-container" id="terminal"></div>
     </div>
 
     <script src="/xterm/xterm.js"></script>

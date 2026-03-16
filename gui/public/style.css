@@ -39,15 +39,27 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
+  padding: 10px 20px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-surface);
 }
 
+.header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
 .header h1 {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.02em;
+  color: var(--accent);
+}
+
+.header-subtitle {
+  font-size: 12px;
+  color: var(--text-dim);
 }
 
 .badge {
@@ -76,7 +88,7 @@ body {
 
 /* Status Panel */
 .status-panel {
-  padding: 12px 20px;
+  padding: 8px 20px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-surface);
 }
@@ -93,7 +105,7 @@ body {
 }
 
 .status-label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -127,59 +139,33 @@ body {
   background: var(--text-dim);
 }
 
-/* Tabs */
-.tabs {
+/* Toolbar */
+.toolbar {
   display: flex;
-  padding: 0 20px;
-  gap: 2px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  gap: 8px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-surface);
 }
 
-.tab {
-  padding: 10px 20px;
-  border: none;
-  background: none;
-  color: var(--text-dim);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.15s;
-}
-
-.tab:hover {
-  color: var(--text);
-}
-
-.tab.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-
-/* Tab Content */
-.tab-content {
-  display: none;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
-.tab-content.active {
+.toolbar-left {
   display: flex;
-}
-
-/* Actions Bar */
-.actions-bar {
-  display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--border);
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  margin: 0 4px;
 }
 
 /* Buttons */
 .btn {
-  padding: 8px 16px;
+  padding: 6px 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font-size: 13px;
@@ -187,23 +173,14 @@ body {
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   transition: all 0.15s;
+  white-space: nowrap;
 }
 
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-}
-
-.btn-primary {
-  background: var(--accent-dim);
-  color: white;
-  border-color: var(--accent);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: var(--accent);
 }
 
 .btn-secondary {
@@ -237,47 +214,7 @@ body {
   background: #5d0000;
 }
 
-.btn-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  font-size: 11px;
-}
-
-.btn.running {
-  position: relative;
-  pointer-events: none;
-}
-
-.btn.running::after {
-  content: "";
-  width: 14px;
-  height: 14px;
-  border: 2px solid transparent;
-  border-top-color: currentColor;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Terminal Toolbar */
-.terminal-toolbar {
-  display: flex;
-  gap: 8px;
-  padding: 12px 20px;
-  align-items: center;
-  border-bottom: 1px solid var(--border);
-}
-
+/* Mount Input */
 .mount-label {
   font-size: 13px;
   color: var(--text-dim);
@@ -285,15 +222,14 @@ body {
 }
 
 .mount-input {
-  flex: 1;
-  max-width: 400px;
-  padding: 8px 12px;
+  width: 260px;
+  padding: 6px 10px;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
   font-size: 13px;
-  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  font-family: "SF Mono", "Fira Code", monospace;
 }
 
 .mount-input:focus {
@@ -308,7 +244,7 @@ body {
 /* Terminal Container */
 .terminal-container {
   flex: 1;
-  padding: 8px;
+  padding: 4px;
   min-height: 0;
   background: #000;
 }
@@ -317,7 +253,6 @@ body {
   height: 100%;
 }
 
-/* xterm overrides */
 .xterm-viewport::-webkit-scrollbar {
   width: 8px;
 }

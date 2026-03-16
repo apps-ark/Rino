@@ -49,8 +49,8 @@ function createSession(command, args = []) {
 
 function runAction(name, args = []) {
   const scripts = {
-    setup: "./setup.sh",
-    login: "./login.sh",
+    setup: "./start.sh --setup",
+    login: "./start.sh --login",
     start: "./start.sh",
     claude: "./start.sh --claude",
   };
