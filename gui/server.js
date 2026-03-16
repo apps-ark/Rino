@@ -26,7 +26,10 @@ app.get("/api/status", async (_req, res) => {
 
 app.post("/api/action/:name", (req, res) => {
   try {
-    const session = runner.runAction(req.params.name, req.body.args || []);
+    const opts = {};
+    if (req.body.cols) opts.cols = req.body.cols;
+    if (req.body.rows) opts.rows = req.body.rows;
+    const session = runner.runAction(req.params.name, req.body.args || [], opts);
     res.json({ id: session.id });
   } catch (err) {
     res.status(400).json({ error: err.message });

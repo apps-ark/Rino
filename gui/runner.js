@@ -5,16 +5,18 @@ const crypto = require("crypto");
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 const sessions = new Map();
 
-function createSession(command, args = []) {
+function createSession(command, args = [], opts = {}) {
   const id = crypto.randomUUID();
   const shell = process.env.SHELL || "/bin/bash";
+  const cols = opts.cols || 120;
+  const rows = opts.rows || 30;
 
   const term = pty.spawn(shell, ["-c", `${command} ${args.join(" ")}`], {
     name: "xterm-256color",
-    cols: 120,
-    rows: 30,
+    cols,
+    rows,
     cwd: PROJECT_ROOT,
-    env: { ...process.env, FORCE_COLOR: "1" },
+    env: { ...process.env, FORCE_COLOR: "1", COLUMNS: String(cols), LINES: String(rows) },
   });
 
   const session = {
@@ -47,7 +49,7 @@ function createSession(command, args = []) {
   return session;
 }
 
-function runAction(name, args = []) {
+function runAction(name, args = [], opts = {}) {
   const scripts = {
     setup: "./start.sh --setup",
     login: "./start.sh --login",
@@ -57,12 +59,12 @@ function runAction(name, args = []) {
 
   const script = scripts[name];
   if (!script) throw new Error(`Accion desconocida: ${name}`);
-  return createSession(script, args);
+  return createSession(script, args, opts);
 }
 
-function runTerminal(mountDir) {
+function runTerminal(mountDir, opts = {}) {
   const args = mountDir ? [mountDir] : [];
-  return createSession("./start.sh", args);
+  return createSession("./start.sh", args, opts);
 }
 
 function getSession(id) {

@@ -81,7 +81,7 @@
       const res = await fetch(`/api/action/${action}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ args: args || [] }),
+        body: JSON.stringify({ args: args || [], cols: t.cols, rows: t.rows }),
       });
 
       const data = await res.json();

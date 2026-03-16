@@ -159,6 +159,7 @@ start_macos() {
 
   INNER_CMD='
     export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    [ -n "$COLUMNS" ] && stty cols "$COLUMNS" rows "$LINES" 2>/dev/null
     cd /workspace 2>/dev/null || cd ~/workspace
     echo ""
     echo "=== Rino - Claude Code Sandbox ==="
@@ -173,6 +174,7 @@ start_macos() {
   if [ "$AUTO_CLAUDE" = true ]; then
     INNER_CMD='
       export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      [ -n "$COLUMNS" ] && stty cols "$COLUMNS" rows "$LINES" 2>/dev/null
       cd /workspace 2>/dev/null || cd ~/workspace
       exec claude --dangerously-skip-permissions
     '
@@ -275,6 +277,7 @@ start_linux() {
 
   INNER_CMD='
     export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    [ -n "$COLUMNS" ] && stty cols "$COLUMNS" rows "$LINES" 2>/dev/null
     cd /workspace 2>/dev/null || cd ~/workspace
     echo ""
     echo "=== Rino - Claude Code Sandbox ==="
@@ -289,6 +292,7 @@ start_linux() {
   if [ "$AUTO_CLAUDE" = true ]; then
     INNER_CMD='
       export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      [ -n "$COLUMNS" ] && stty cols "$COLUMNS" rows "$LINES" 2>/dev/null
       cd /workspace 2>/dev/null || cd ~/workspace
       exec claude --dangerously-skip-permissions
     '
