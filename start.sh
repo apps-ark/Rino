@@ -66,17 +66,18 @@ do_setup_macos() {
     --memory 8192 \
     --disk-size 4096 \
     -- sh -c '
-    apk update
-    apk add --no-cache \
-      ca-certificates curl wget git bash openssh sudo \
+    apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl wget git bash openssh-client sudo \
       nodejs npm \
-      python3 py3-pip \
-      build-base linux-headers
+      python3 python3-pip \
+      build-essential \
+      procps less iproute2 jq xz-utils \
+    && rm -rf /var/lib/apt/lists/*
 
     npm install -g @anthropic-ai/claude-code
 
-    addgroup coder
-    adduser -D -G coder -s /bin/bash coder
+    groupadd coder
+    useradd -m -g coder -s /bin/bash coder
     echo "coder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
     mkdir -p /home/coder/workspace
     chown -R coder:coder /home/coder
