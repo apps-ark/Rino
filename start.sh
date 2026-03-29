@@ -88,31 +88,8 @@ export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 export TERM=xterm-256color
 BASHRC
-
-    cat > /home/coder/.bash_profile << "PROFILE"
-[ -f ~/.bashrc ] && . ~/.bashrc
-eval $(stty size 2>/dev/null | awk '"'"'{printf "stty rows %s cols %s", $1, $2}'"'"') 2>/dev/null
-
-if [ -f /tmp/.auto_claude ]; then
-  rm -f /tmp/.auto_claude
-  cd /workspace 2>/dev/null || cd ~/workspace
-  exec claude --dangerously-skip-permissions
-fi
-
-if [ -t 1 ]; then
-  cd /workspace 2>/dev/null || cd ~/workspace
-  echo ""
-  echo "=== Rino - Claude Code Sandbox ==="
-  echo "Dir:    $(pwd)"
-  echo "Claude: $(claude --version 2>/dev/null)"
-  echo ""
-  echo "  claude --dangerously-skip-permissions"
-  echo ""
-fi
-PROFILE
-
     cp /home/coder/.bashrc /home/coder/.profile
-    chown coder:coder /home/coder/.bashrc /home/coder/.profile /home/coder/.bash_profile
+    chown coder:coder /home/coder/.bashrc /home/coder/.profile
 
     echo ""
     echo ">>> Node.js $(node --version)"
@@ -189,25 +166,45 @@ start_macos() {
     info "Montando: $MOUNT_DIR -> /workspace"
   fi
 
+  # Preambulo que se ejecuta dentro de la VM como coder
+  VM_INIT='
+    export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+    export TERM=xterm-256color
+    # Leer tamaño real del PTY de Shuru (no de env vars del host)
+    eval $(stty size 2>/dev/null | awk "{printf \"stty rows %s cols %s\", \$1, \$2}") 2>/dev/null
+  '
+
+  INNER_CMD="${VM_INIT}
+    cd /workspace 2>/dev/null || cd ~/workspace
+    echo \"\"
+    echo \"=== Rino - Claude Code Sandbox ===\"
+    echo \"Dir:    \$(pwd)\"
+    echo \"Claude: \$(claude --version 2>/dev/null)\"
+    echo \"\"
+    echo \"  claude --dangerously-skip-permissions\"
+    echo \"\"
+    exec bash -l
+  "
+
+  if [ "$AUTO_CLAUDE" = true ]; then
+    INNER_CMD="${VM_INIT}
+      cd /workspace 2>/dev/null || cd ~/workspace
+      exec claude --dangerously-skip-permissions
+    "
+  fi
+
   info "Levantando VM..."
 
   cd "$SCRIPT_DIR"
 
-  if [ "$AUTO_CLAUDE" = true ]; then
-    # shellcheck disable=SC2086
-    shuru run --allow-net --from "claude-authed" \
-      --cpus 8 \
-      --memory 8192 \
-      $MOUNT_FLAG \
-      -- sh -c 'touch /tmp/.auto_claude; exec su - coder'
-  else
-    # shellcheck disable=SC2086
-    shuru run --allow-net --from "claude-authed" \
-      --cpus 8 \
-      --memory 8192 \
-      $MOUNT_FLAG \
-      -- su - coder
-  fi
+  # shellcheck disable=SC2086
+  shuru run --allow-net --from "claude-authed" \
+    --cpus 8 \
+    --memory 8192 \
+    $MOUNT_FLAG \
+    -- su - coder -c "$INNER_CMD"
 }
 
 # ------------------------------------------------------------------
@@ -296,12 +293,36 @@ start_linux() {
     info "Montando: $MOUNT_DIR -> /workspace"
   fi
 
-  info "Levantando contenedor..."
+  # Preambulo que se ejecuta dentro de la VM como coder
+  VM_INIT='
+    export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+    export TERM=xterm-256color
+    # Leer tamaño real del PTY de Shuru (no de env vars del host)
+    eval $(stty size 2>/dev/null | awk "{printf \"stty rows %s cols %s\", \$1, \$2}") 2>/dev/null
+  '
 
-  CLAUDE_ENV=""
+  INNER_CMD="${VM_INIT}
+    cd /workspace 2>/dev/null || cd ~/workspace
+    echo \"\"
+    echo \"=== Rino - Claude Code Sandbox ===\"
+    echo \"Dir:    \$(pwd)\"
+    echo \"Claude: \$(claude --version 2>/dev/null)\"
+    echo \"\"
+    echo \"  claude --dangerously-skip-permissions\"
+    echo \"\"
+    exec bash -l
+  "
+
   if [ "$AUTO_CLAUDE" = true ]; then
-    CLAUDE_ENV="-e SANDBOX_AUTO_CLAUDE=1"
+    INNER_CMD="${VM_INIT}
+      cd /workspace 2>/dev/null || cd ~/workspace
+      exec claude --dangerously-skip-permissions
+    "
   fi
+
+  info "Levantando contenedor..."
 
   # shellcheck disable=SC2086
   docker run -it --rm \
@@ -309,9 +330,8 @@ start_linux() {
     -u coder \
     -v claude-sandbox-auth:/home/coder/.claude \
     $MOUNT_FLAG \
-    $CLAUDE_ENV \
     claude-sandbox \
-    bash --login
+    bash -c "$INNER_CMD"
 }
 
 # ------------------------------------------------------------------
