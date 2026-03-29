@@ -66,17 +66,18 @@ do_setup_macos() {
     --memory 8192 \
     --disk-size 4096 \
     -- sh -c '
-    apk update
-    apk add --no-cache \
-      ca-certificates curl wget git bash openssh sudo \
+    apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl wget git bash openssh-client sudo \
       nodejs npm \
-      python3 py3-pip \
-      build-base linux-headers
+      python3 python3-pip \
+      build-essential \
+      procps less iproute2 jq xz-utils \
+    && rm -rf /var/lib/apt/lists/*
 
     npm install -g @anthropic-ai/claude-code
 
-    addgroup coder
-    adduser -D -G coder -s /bin/bash coder
+    groupadd coder
+    useradd -m -g coder -s /bin/bash coder
     echo "coder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
     mkdir -p /home/coder/workspace
     chown -R coder:coder /home/coder
@@ -87,8 +88,31 @@ export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 export TERM=xterm-256color
 BASHRC
+
+    cat > /home/coder/.bash_profile << "PROFILE"
+[ -f ~/.bashrc ] && . ~/.bashrc
+eval $(stty size 2>/dev/null | awk '"'"'{printf "stty rows %s cols %s", $1, $2}'"'"') 2>/dev/null
+
+if [ -f /tmp/.auto_claude ]; then
+  rm -f /tmp/.auto_claude
+  cd /workspace 2>/dev/null || cd ~/workspace
+  exec claude --dangerously-skip-permissions
+fi
+
+if [ -t 1 ]; then
+  cd /workspace 2>/dev/null || cd ~/workspace
+  echo ""
+  echo "=== Rino - Claude Code Sandbox ==="
+  echo "Dir:    $(pwd)"
+  echo "Claude: $(claude --version 2>/dev/null)"
+  echo ""
+  echo "  claude --dangerously-skip-permissions"
+  echo ""
+fi
+PROFILE
+
     cp /home/coder/.bashrc /home/coder/.profile
-    chown coder:coder /home/coder/.bashrc /home/coder/.profile
+    chown coder:coder /home/coder/.bashrc /home/coder/.profile /home/coder/.bash_profile
 
     echo ""
     echo ">>> Node.js $(node --version)"
@@ -165,45 +189,25 @@ start_macos() {
     info "Montando: $MOUNT_DIR -> /workspace"
   fi
 
-  # Preambulo que se ejecuta dentro de la VM como coder
-  VM_INIT='
-    export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-    export LANG=C.UTF-8
-    export LC_ALL=C.UTF-8
-    export TERM=xterm-256color
-    # Leer tamaño real del PTY de Shuru (no de env vars del host)
-    eval $(stty size 2>/dev/null | awk "{printf \"stty rows %s cols %s\", \$1, \$2}") 2>/dev/null
-  '
-
-  INNER_CMD="${VM_INIT}
-    cd /workspace 2>/dev/null || cd ~/workspace
-    echo \"\"
-    echo \"=== Rino - Claude Code Sandbox ===\"
-    echo \"Dir:    \$(pwd)\"
-    echo \"Claude: \$(claude --version 2>/dev/null)\"
-    echo \"\"
-    echo \"  claude --dangerously-skip-permissions\"
-    echo \"\"
-    exec bash -l
-  "
-
-  if [ "$AUTO_CLAUDE" = true ]; then
-    INNER_CMD="${VM_INIT}
-      cd /workspace 2>/dev/null || cd ~/workspace
-      exec claude --dangerously-skip-permissions
-    "
-  fi
-
   info "Levantando VM..."
 
   cd "$SCRIPT_DIR"
 
-  # shellcheck disable=SC2086
-  shuru run --allow-net --from "claude-authed" \
-    --cpus 8 \
-    --memory 8192 \
-    $MOUNT_FLAG \
-    -- su - coder -c "$INNER_CMD"
+  if [ "$AUTO_CLAUDE" = true ]; then
+    # shellcheck disable=SC2086
+    shuru run --allow-net --from "claude-authed" \
+      --cpus 8 \
+      --memory 8192 \
+      $MOUNT_FLAG \
+      -- sh -c 'touch /tmp/.auto_claude; exec su - coder'
+  else
+    # shellcheck disable=SC2086
+    shuru run --allow-net --from "claude-authed" \
+      --cpus 8 \
+      --memory 8192 \
+      $MOUNT_FLAG \
+      -- su - coder
+  fi
 }
 
 # ------------------------------------------------------------------
@@ -292,36 +296,12 @@ start_linux() {
     info "Montando: $MOUNT_DIR -> /workspace"
   fi
 
-  # Preambulo que se ejecuta dentro de la VM como coder
-  VM_INIT='
-    export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-    export LANG=C.UTF-8
-    export LC_ALL=C.UTF-8
-    export TERM=xterm-256color
-    # Leer tamaño real del PTY de Shuru (no de env vars del host)
-    eval $(stty size 2>/dev/null | awk "{printf \"stty rows %s cols %s\", \$1, \$2}") 2>/dev/null
-  '
-
-  INNER_CMD="${VM_INIT}
-    cd /workspace 2>/dev/null || cd ~/workspace
-    echo \"\"
-    echo \"=== Rino - Claude Code Sandbox ===\"
-    echo \"Dir:    \$(pwd)\"
-    echo \"Claude: \$(claude --version 2>/dev/null)\"
-    echo \"\"
-    echo \"  claude --dangerously-skip-permissions\"
-    echo \"\"
-    exec bash -l
-  "
-
-  if [ "$AUTO_CLAUDE" = true ]; then
-    INNER_CMD="${VM_INIT}
-      cd /workspace 2>/dev/null || cd ~/workspace
-      exec claude --dangerously-skip-permissions
-    "
-  fi
-
   info "Levantando contenedor..."
+
+  CLAUDE_ENV=""
+  if [ "$AUTO_CLAUDE" = true ]; then
+    CLAUDE_ENV="-e SANDBOX_AUTO_CLAUDE=1"
+  fi
 
   # shellcheck disable=SC2086
   docker run -it --rm \
@@ -329,8 +309,9 @@ start_linux() {
     -u coder \
     -v claude-sandbox-auth:/home/coder/.claude \
     $MOUNT_FLAG \
+    $CLAUDE_ENV \
     claude-sandbox \
-    bash -c "$INNER_CMD"
+    bash --login
 }
 
 # ------------------------------------------------------------------

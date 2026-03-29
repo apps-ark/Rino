@@ -5,6 +5,9 @@
   "network": {
     "allow": [
       "*.anthropic.com",
+      "*.claude.com",
+      "deb.debian.org",
+      "security.debian.org",
       "registry.npmjs.org",
       "*.npmjs.org",
       "github.com",
